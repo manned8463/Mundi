@@ -8,7 +8,7 @@ import { aiLangNote } from '../core/i18n.js';
 import { setPrompt, nameOf } from '../st/bridge.js';
 import { weekday, hm, period, seasonOf } from './time.js';
 import { placeOf } from './places.js';
-import { presentAt } from './people.js';
+import { presentAt, routineAt, routineStep } from './people.js';
 import { feelings } from './needs.js';
 import { planLines } from './plans.js';
 import { memoryLines } from './facts.js';
@@ -25,7 +25,7 @@ export const BLOCKS = [
     { id: 'core', name: 'Scene basics', desc: 'World, day and time, weather, place, who is here, and the rules of the scene.' },
     { id: 'memories', name: 'Memories', desc: 'What the people here remember about you, and what happened earlier in this place.', cut: 9 },
     { id: 'plans', name: 'Plans', desc: 'Plans you made with the people here.', cut: 8 },
-    { id: 'focus', name: 'Scene focus', desc: 'Why you are here: a date, a meet-up, someone who came along.', cut: 8 },
+    { id: 'focus', name: 'Scene focus', desc: 'Why you are here: a date, a meet-up, someone who came along, or the routines that put the people here.', cut: 8 },
     { id: 'solo', name: 'Talking alone', desc: 'Who you are talking to when you talk only with one person.' },
     { id: 'romance', name: 'Friendship and romance', desc: 'Where you stand with each person here.', cut: 7 },
     { id: 'family', name: 'Your children', desc: 'Your children\'s age and how to treat them. Always sent when they are here.' },
@@ -123,8 +123,34 @@ function focusLine(g, w, present) {
         return `Scene focus: ${along.join(' and ')} came along with {{user}}.`;
     if (!present.length)
         return `Scene focus: {{user}} is alone here. Describe the place, the passing moment and how {{user}} feels; nobody else appears.`;
-    void w;
-    return '';
+    return scheduleLine(g, w, present);
+}
+// The people here by their own routine: where they are and why (home, work or leisure), so the AI plays them
+// true to their day instead of having them idle around {{user}}.
+function scheduleLine(g, w, present) {
+    const now = nowAbs(g);
+    const here = present.filter(r => routineAt(g, w, r, now) === g.player.loc); // only the ones their routine puts at this place
+    if (!here.length)
+        return '';
+    const spot = placeOf(g, w, g.player.loc)?.name ?? 'somewhere';
+    const who = here.length === 1 ? `${here[0].name} is` : `${here.map(r => r.name).join(' and ')} are`;
+    const why = here.map(r => `${r.name} — ${whyHere(g, w, r, now)}`).join('; ');
+    return `Scene focus: ${who} at ${spot} by their own schedule (${why}).`;
+}
+// The reason the routine puts her at this place: home, her job, free time, or a set stop of her day.
+function whyHere(g, w, r, now) {
+    const target = routineStep(r, now)[1];
+    if (target === 'home')
+        return 'home';
+    if (target === 'work') {
+        const job = w.features?.jobs !== false ? w.occupations.find(o => o.id === r.occupation) : null;
+        return job ? `work${job.name ? ` (${job.name.toLowerCase()})` : ''}` : 'leisure'; // no job: the routine sends her to free time instead
+    }
+    if (target === 'leisure')
+        return 'leisure';
+    if (target === 'campus')
+        return 'student';
+    return w.places.some(p => p.id === target) ? 'a set stop of the routine' : 'home'; // unknown place: she stays home
 }
 function soloLine(g, present) {
     const solo = String(g.social?.solo ?? '');

@@ -140,7 +140,7 @@ function scheduleLine(g: Save, w: WorldDef, present: Resident[]): string {
     const spot = placeOf(g, w, g.player.loc)?.name ?? 'somewhere';
     const who = here.length === 1 ? `${here[0].name} is` : `${here.map(r => r.name).join(' and ')} are`;
     const why = here.map(r => `${r.name} — ${whyHere(g, w, r, now)}`).join('; ');
-    return `Scene focus: ${who} at ${spot} by their own schedule (${why}); play them accordingly: busy at work, relaxed at leisure, at ease at home.`;
+    return `Scene focus: ${who} at ${spot} by their own schedule (${why}).`;
 }
 
 // The reason the routine puts her at this place: home, her job, free time, or a set stop of her day.
@@ -152,6 +152,7 @@ function whyHere(g: Save, w: WorldDef, r: Resident, now: number): string {
         return job ? `work${job.name ? ` (${job.name.toLowerCase()})` : ''}` : 'leisure';   // no job: the routine sends her to free time instead
     }
     if (target === 'leisure') return 'leisure';
+    if (target === 'campus') return 'student'
     return w.places.some(p => p.id === target) ? 'a set stop of the routine' : 'home';   // unknown place: she stays home
 }
 
