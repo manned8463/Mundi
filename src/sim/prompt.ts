@@ -32,7 +32,6 @@ export const BLOCKS: Block[] = [
     { id: 'memories', name: 'Memories', desc: 'What the people here remember about you, and what happened earlier in this place.', cut: 9 },
     { id: 'plans', name: 'Plans', desc: 'Plans you made with the people here.', cut: 8 },
     { id: 'focus', name: 'Scene focus', desc: 'Why you are here: a date, a meet-up, someone who came along.', cut: 8 },
-    { id: 'task', name: 'Character Tasks', desc: 'The speaking character\'s current task: attend classes, relax, work…', cut: 8 },
     { id: 'solo', name: 'Talking alone', desc: 'Who you are talking to when you talk only with one person.' },
     { id: 'romance', name: 'Friendship and romance', desc: 'Where you stand with each person here.', cut: 7 },
     { id: 'family', name: 'Your children', desc: 'Your children\'s age and how to treat them. Always sent when they are here.' },
@@ -73,7 +72,6 @@ export function sceneBlocks(): Built[] {
         memories: memoryLines(g, w, met, personaName()),
         plans: planLines(g, present, w),
         focus: [focusLine(g, w, present)],
-        task: [taskLine(g, w, present)],
         feelings: [feelingLine(g, met)],
         you: [physiqueLine(g), aspirationOf(g) ? `{{user}}'s life goal: ${aspirationOf(g)!.name.toLowerCase()}.` : ''],
         solo: [soloLine(g, present)],
@@ -137,37 +135,15 @@ function focusLine(g: Save, w: WorldDef, present: Resident[]): string {
 // Why each person here is around, from their own routine: student, work, home or free time.
 function hereLabel(w: WorldDef, r: Resident, now: number): string {
     const target = routineStep(r, now)[1];
-    if (target === 'campus') return 'Student';
+    if (target === 'campus') return 'attending classes';
     if (target === 'work') {
         const job = w.features?.jobs !== false ? w.occupations.find(o => o.id === r.occupation) : null;
         if (!job) return 'Leisure';   // no job: the routine sends her to free time instead
-        return job.name ? `work (${job.name})` : 'Work';
+        return job.name ? `Working as ${job.name}` : 'Working';
     }
     if (target === 'leisure') return 'Leisure';
     if (target === 'home') return 'Home';
     return w.places.find(p => p.id === target)?.name || 'Home';   // a set stop of the routine; unknown place: she stays home
-}
-
-// What her own routine has her doing right now: classes, her job, free time, or a set stop of her day.
-function taskOf(w: WorldDef, r: Resident, now: number): string {
-    const target = routineStep(r, now)[1];
-    if (target === 'campus') return 'attend classes';
-    if (target === 'work') {
-        const job = w.features?.jobs !== false ? w.occupations.find(o => o.id === r.occupation) : null;
-        return job ? 'work' : 'relax';   // no job: the routine sends her to free time instead
-    }
-    if (target === 'leisure') return 'relax';
-    const stop = target !== 'home' ? w.places.find(p => p.id === target)?.name : '';
-    return stop ? `be at ${stop}` : 'relax at home';   // unknown place: she stays home
-}
-
-// The task block now only names the speaking character's own task, so the AI plays them true to their day.
-function taskLine(g: Save, w: WorldDef, present: Resident[]): string {
-    const now = nowAbs(g);
-    const solo = String((g as any).social?.solo ?? '');
-    const r = present.find(x => x.avatar === solo) ?? (present.length === 1 ? present[0] : undefined);
-    if (!r) return '';
-    return `Current task: ${r.name} — ${taskOf(w, r, now)}.`;
 }
 
 function soloLine(g: Save, present: Resident[]) {
