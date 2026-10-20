@@ -7,7 +7,7 @@ import { ctx, thumb, characters, charOf, personaThumb, personaName, lorebooks, c
 import { homeAddress, placeOf } from '../sim/places.js';
 import { resident, homeSpot, syncScene, currentEntry } from '../sim/game.js';
 import { social, bondLabel } from '../sim/social.js';
-import { romOf, romanceTier, setRomance, ROMANCE_TIERS, STATUS_TIER, type RomStatus } from '../sim/romance.js';
+import { romOf, romanceTier, setRomance, STATUS_TIER, type RomStatus } from '../sim/romance.js';
 import { romanceBlocked } from '../sim/family.js';
 import { tiesOf, setTie, removeTie, liveTogether, TIE_TYPES, TIE_TONES, type TieType, type TieTone } from '../sim/living.js';
 import { freeSpots } from '../sim/work.js';
@@ -28,8 +28,8 @@ const WC = { tab: 'people' as Tab, adv: false, who: '', adding: false, q: '', lq
 
 const opt = (v: string, label: string, sel: boolean) => `<option value="${esc(v)}" ${sel ? 'selected' : ''}>${esc(label)}</option>`;
 const sameRoutine = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
-// the romance ladder as one list: where the value places them (No romance…Crush) and the set statuses
-const ROM_OPTS = [...ROMANCE_TIERS, ...Object.values(STATUS_TIER)];
+// the real statuses only: No romance / Interest / Crush are just labels derived from the value, not states
+const ROM_OPTS: [RomStatus, string][] = [['none', 'No relationship'], ...Object.entries(STATUS_TIER).map(([id, t]) => [id as RomStatus, t.name] as [RomStatus, string])];
 
 /* ---------- people ---------- */
 
@@ -52,9 +52,9 @@ function personForm(g: Save, w: WorldDef): string {
             <div class="mu-field"><span>Where they go in their free time</span><div class="mu-chips">${leisure.map(p => `<button class="mu-chip ${r.leisure.includes(p.id) ? 'is-on' : ''}" data-act="wc-leisure" data-id="${esc(p.id)}">${esc(p.name)}</button>`).join('')}</div>
                 <small class="mu-muted">None chosen: any leisure place.</small></div>
             <label class="mu-field slider"><span>Bond with you · ${bond}/100 (${bondLabel(g, r.avatar)})</span><input type="range" min="0" max="100" value="${bond}" data-input="wc-bond"></label>
-            <label class="mu-field slider"><span>Romance · ${rom.value}/100</span><input type="range" min="0" max="100" value="${rom.value}" data-input="wc-rom" ${blocked ? 'disabled' : ''}></label>
-            <label class="mu-field"><span>Relationship</span><select data-input="wc-rom-tier" ${blocked ? 'disabled' : ''}>${ROM_OPTS.map(t => opt(t.id, t.name, t.id === rT.id)).join('')}</select></label>
-            <small class="mu-muted">${blocked ? 'Not possible with family or a child.' : 'Interest and Crush grow with the romance value; Dating, Engaged and Married come from asking them — or pick one here.'}</small>
+            <label class="mu-field slider"><span>Romance · ${rom.value}/100 (${rT.name})</span><input type="range" min="0" max="100" value="${rom.value}" data-input="wc-rom" ${blocked ? 'disabled' : ''}></label>
+            <label class="mu-field"><span>Relationship</span><select data-input="wc-rom-tier" ${blocked ? 'disabled' : ''}>${ROM_OPTS.map(([id, n]) => opt(id, n, rom.status === id)).join('')}</select></label>
+            <small class="mu-muted">${blocked ? 'Not possible with family or a child.' : 'The value is how strong the romance is (No romance, then Interest, then Crush); Dating, Engaged and Married come from asking them — or pick one here.'}</small>
             <button class="mu-danger" data-act="wc-remove">${icon('trash')}<span>Remove from this world</span></button>
             <small class="mu-muted">Their card stays in SillyTavern; they just stop living here.</small>` : ''}`;
 }
@@ -295,19 +295,16 @@ Object.assign(INPUT, {
     'wc-bond': (el) => { const g = game(); if (!g) return; social(g).bond[WC.who] = Number(el.value); saveGame(); const s = el.previousElementSibling; if (s) s.textContent = `Bond with you · ${el.value}/100`; },
     'wc-rom': (el) => {
         const g = game(); if (!g) return;
-        setRomance(g, WC.who, Number(el.value));
+        const v = Number(el.value);
+        setRomance(g, WC.who, v);
         saveGame(); refreshPrompt();
-        const s = el.previousElementSibling; if (s) s.textContent = `Romance · ${el.value}/100`;
+        const s = el.previousElementSibling; if (s) s.textContent = `Romance · ${v}/100 (${romanceTier(g, WC.who, v).name})`;
     },
     'wc-rom-tier': (el) => {
         const g = game(); if (!g) return;
         const v = el.value as RomStatus;
         if (v !== 'none' && romanceBlocked(g, WC.who)) { toast('Not possible with family or a child.', 'info'); notify(); return; }
-        // the value tiers (No romance, Interest, Crush) only hold while the value sits in their range: bring it along
-        const t = ROM_OPTS.find(x => x.id === v)!;
-        const cur = romOf(g, WC.who).value;
-        const val = ROMANCE_TIERS.includes(t) && (cur < t.lo || cur >= t.hi) ? t.lo : cur;
-        setRomance(g, WC.who, val, v);
+        setRomance(g, WC.who, undefined, v);
         saveGame(); refreshPrompt(); notify();
     },
     'wc-note': (el) => { ctx().chatMetadata.note_prompt = el.value; noteSave(); const t = document.getElementById('extension_floating_prompt') as HTMLTextAreaElement | null; if (t) t.value = el.value; },
