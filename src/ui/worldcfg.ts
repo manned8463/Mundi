@@ -292,7 +292,7 @@ Object.assign(INPUT, {
     },
     'wc-met': async (el) => { const c = ctxGW(); const r = c?.g.cast[WC.who]; if (!r) return; r.met = el.checked; await changed(); },
     'wc-routine': async (el) => { const c = ctxGW(); const r = c?.g.cast[WC.who]; if (!c || !r || !el.value) return; r.routine = structuredClone(c.w.cast.routineTemplates[el.value]); await changed(); },
-    'wc-bond': (el) => { const g = game(); if (!g) return; social(g).bond[WC.who] = Number(el.value); saveGame(); const s = el.previousElementSibling; if (s) s.textContent = `Bond with you · ${el.value}/100`; },
+    'wc-bond': (el) => { const g = game(); if (!g) return; social(g).bond[WC.who] = Number(el.value); saveGame(); const s = el.previousElementSibling; if (s) s.textContent = `Bond with you · ${el.value}/100 (${bondLabel(g, WC.who)})`; },
     'wc-rom': (el) => {
         const g = game(); if (!g) return;
         const v = Number(el.value);
