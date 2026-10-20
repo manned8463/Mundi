@@ -38,7 +38,7 @@ export const ROMANCE_TIERS: Tier[] = [
     { id: 'interest', name: 'Interest', lo: 15, hi: 40, color: '#f48fb1' },
     { id: 'crush', name: 'Crush', lo: 40, hi: 101, color: '#e7489a' },
 ];
-const STATUS_TIER: Record<Exclude<RomStatus, 'none'>, Tier> = {
+export const STATUS_TIER: Record<Exclude<RomStatus, 'none'>, Tier> = {
     dating: { id: 'dating', name: 'Dating', lo: 0, hi: 101, color: '#e23b6e' },
     engaged: { id: 'engaged', name: 'Engaged', lo: 0, hi: 101, color: '#c2185b' },
     married: { id: 'married', name: 'Married', lo: 0, hi: 101, color: '#ad1457' },

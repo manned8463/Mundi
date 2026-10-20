@@ -7,7 +7,7 @@ import { ctx, thumb, characters, charOf, personaThumb, personaName, lorebooks, c
 import { homeAddress, placeOf } from '../sim/places.js';
 import { resident, homeSpot, syncScene, currentEntry } from '../sim/game.js';
 import { social, bondLabel, isPartner } from '../sim/social.js';
-import { romOf } from '../sim/romance.js';
+import { romOf, friendTier, romanceTier, FRIEND_TIERS, ROMANCE_TIERS, STATUS_TIER, type Tier } from '../sim/romance.js';
 import { romanceBlocked } from '../sim/family.js';
 import { tiesOf, setTie, removeTie, liveTogether, TIE_TYPES, TIE_TONES, type TieType, type TieTone } from '../sim/living.js';
 import { freeSpots } from '../sim/work.js';
@@ -28,6 +28,8 @@ const WC = { tab: 'people' as Tab, adv: false, who: '', adding: false, q: '', lq
 
 const opt = (v: string, label: string, sel: boolean) => `<option value="${esc(v)}" ${sel ? 'selected' : ''}>${esc(label)}</option>`;
 const sameRoutine = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+// a tier ladder as chips, with where this person stands highlighted in the tier's colour
+const tierChips = (tiers: Tier[], cur: Tier) => `<div class="mu-chips">${tiers.map(t => `<span class="mu-chip ${t.id === cur.id ? 'is-on' : ''}"${t.id === cur.id ? ` style="color:${t.color};border-color:${t.color}"` : ''}>${esc(t.name)}</span>`).join('')}</div>`;
 
 /* ---------- people ---------- */
 
@@ -36,6 +38,7 @@ function personForm(g: Save, w: WorldDef): string {
     if (!r) return '<p class="mu-muted mu-pad">Choose someone on the left.</p>';
     const tpl = Object.entries(w.cast.routineTemplates).find(([, t]) => sameRoutine(t, r.routine))?.[0] ?? '';
     const bond = social(g).bond[r.avatar] ?? 0;
+    const fT = friendTier(bond), rT = romanceTier(g, r.avatar);
     const leisure = w.places.filter(p => (p.tags ?? []).some(t => ['leisure', 'food', 'shop'].includes(t)));
     return `<header class="mu-wc-head"><img src="${esc(thumb(r.avatar))}" alt=""><div><h3 data-notr>${esc(r.name)}</h3><small>${esc(homeAddress(w, r.home))}</small></div></header>
         <label class="mu-field"><span>Job</span><select data-input="wc-job">${opt('', 'No job', !r.occupation)}${w.occupations.map(o => opt(o.id, `${o.name} · ${placeOf(g, w, o.place)?.name ?? ''}`, r.occupation === o.id)).join('')}</select></label>
@@ -47,6 +50,8 @@ function personForm(g: Save, w: WorldDef): string {
             <div class="mu-field"><span>Where they go in their free time</span><div class="mu-chips">${leisure.map(p => `<button class="mu-chip ${r.leisure.includes(p.id) ? 'is-on' : ''}" data-act="wc-leisure" data-id="${esc(p.id)}">${esc(p.name)}</button>`).join('')}</div>
                 <small class="mu-muted">None chosen: any leisure place.</small></div>
             <label class="mu-field slider"><span>Bond with you · ${bond}/100 (${bondLabel(g, r.avatar)})</span><input type="range" min="0" max="100" value="${bond}" data-input="wc-bond"></label>
+            <div class="mu-field"><span>Friendship · ${esc(fT.name)}</span>${tierChips(FRIEND_TIERS, fT)}<small class="mu-muted">The tiers the bond with you moves through.</small></div>
+            <div class="mu-field"><span>Romance · ${romOf(g, r.avatar).value}/100 (${esc(rT.name)})</span>${tierChips([...ROMANCE_TIERS, ...Object.values(STATUS_TIER)], rT)}<small class="mu-muted">${romanceBlocked(g, r.avatar) ? 'Not possible with family or a child.' : 'Interest and Crush grow with the romance value; Dating, Engaged and Married come from asking them.'}</small></div>
             <label class="mu-check"><input type="checkbox" data-input="wc-partner" ${isPartner(g, r.avatar) ? 'checked' : ''}><span>Together (dating)</span></label>
             <button class="mu-danger" data-act="wc-remove">${icon('trash')}<span>Remove from this world</span></button>
             <small class="mu-muted">Their card stays in SillyTavern; they just stop living here.</small>` : ''}`;
