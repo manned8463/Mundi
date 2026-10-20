@@ -17,6 +17,13 @@ export function romOf(g: Save, avatar: string): Rom {
 }
 export const romValue = (g: Save, avatar: string) => romOf(g, avatar).value;
 export function addRomance(g: Save, avatar: string, delta: number) { const r = romOf(g, avatar); r.value = Math.max(0, Math.min(100, r.value + delta)); }
+// set by hand (the world config): the value and/or the status, keeping the partner list in step
+export function setRomance(g: Save, avatar: string, value?: number, status?: RomStatus) {
+    const r = romOf(g, avatar);
+    if (value !== undefined) r.value = Math.max(0, Math.min(100, value));
+    if (status !== undefined) r.status = status;
+    syncPartner(g, avatar);
+}
 // keeps the older "partner" list (used by plans, the phone…) in step with the romance status
 function syncPartner(g: Save, avatar: string) {
     const p = social(g).partner; const on = romOf(g, avatar).status !== 'none'; const i = p.indexOf(avatar);
