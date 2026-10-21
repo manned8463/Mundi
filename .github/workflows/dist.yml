@@ -1,10 +1,10 @@
-name: BuildDist
+name: Build
 on:
   push:
-    branches: [main]
-  pull_request:
+permissions:
+  contents: write
 jobs:
-  tsc:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -13,4 +13,13 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npx tsc -p tsconfig.json
+      - run: ./build.sh
+        env:
+          TSC: npx tsc
+      - name: Commit build output
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dist style.css
+          git diff --cached --quiet || git commit -m "chore: build [skip ci]"
+          git push
